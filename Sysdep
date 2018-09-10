@@ -1,0 +1,75 @@
+cc     = gcc
+CC     = g++
+f77    = gfortran
+NVCC   = nvcc
+MPICC  = mpic++
+
+#cc = /Users/wilken/local/bin/gcc
+#CC = /Users/wilken/local/bin/g++
+
+CFAST  = -O3 -Wall -fopenmp -DUSEOMP=1 -Wno-logical-op-parentheses
+# CFAST  = -O3 -Wall -fopenmp -DUSEOMP=1
+# CFAST  = -g -Wall -fopenmp -DUSEOMP=1
+# CFAST  = -g -Wall -fopenmp
+CFAST  = -g -Wall
+CFAST  = -O3 -Wall
+
+CFLAGS1  = -O3 -Wall -fopenmp -DUSEOMP=1
+CFLAGSD  = -g -Wall -fopenmp -DUSEOMP=1
+# CFLAGSD = -g -Wall
+
+CUFLAGS = -O3 -arch=sm_20
+CFLAGS = $(CFAST)
+cFLAGS = $(CFAST)
+
+ROOT   = /scratch
+ROOT   = /Users/wendyhuang
+#ROOT   = ../../..
+#ROOT   = /data/home/wilken
+
+INC    = -I$(ROOT)/include -I$(ROOT)/include/vtk -I/opt/local/include
+INC    = -I$(ROOT)/include -I/opt/local/include
+INC    = -I$(ROOT)/include -I/usr/local/include
+CUINC  = -I$(ROOT)/include/cula
+
+LA     = -llapack -lblas
+
+LIBS2  = -L$(ROOT)/lib/vtk -L/usr/X11R6/lib64 \
+         -lvtkHybrid -lvtkRendering -lvtkImaging -lvtkGraphics -lvtkIO \
+         -lvtkFiltering -lvtkftgl -lvtkfreetype -lvtkCommon -lvtkjpeg \
+         -lpng -lz -lGL -lXt -lX11 -ldl -lpthread
+
+LIBS   = -L. -L$(ROOT)/lib -lspeedy -lcla -lminpack -larpack -llbfgs \
+         $(LA) -lg2c -lnan -lfftw3 -lm
+
+LIBS   = -L. -L/opt/local/lib -L$(ROOT)/lib -lcla $(LA) -llbfgs -lf95 -lfftw3 \
+         -lgmpfrxx -lmpfr -lgmp -lqd -lm
+
+LIBS   = -L$(ROOT)/local/lib -L. -L/opt/local/lib -L$(ROOT)/lib -lcla $(LA) -llbfgs -lf95 -lfftw3 \
+         -lgmpfrxx -lmpfr -lgmp -lm
+
+LIBS   = -L$(ROOT)/local/lib -L. -L/opt/local/lib -L$(ROOT)/lib -lcla $(LA) -llbfgs -lf95 \
+         -lgmpfrxx -lmpfr -lgmp -lqd -lm
+
+LIBS   = -L. -L/opt/local/lib -L$(ROOT)/gcc_download/usr/local/lib -L$(ROOT)/lib -lcla $(LA) \
+         -lgmpfrxx -lmpfr -lgmp -lqd -lfftw3_threads -lfftw3 -larpack -lgfortran -lm
+
+LIBS   = -L. -L/opt/local/lib -L$(ROOT)/gcc_download/usr/local/lib -L$(ROOT)/lib -lcla $(LA) \
+         -lgmpfrxx -lmpfr -lgmp -lqd -lfftw3_threads -lfftw3 -lm
+
+# DYLD_LIBRARY_PATH=/Users/wilken/gcc_download/usr/local/lib ./test_arpack_gen
+
+LIBF   = -L. -L/opt/local/lib -L$(ROOT)/gcc_download/usr/local/lib -L$(ROOT)/lib -lcla $(LA) \
+         -lgmpfrxx -lmpfr -lgmp -lqd -lfftw3_threads -lfftw3 -larpack -lgfortran -lm
+
+LIBS   = -L. -L/opt/local/lib -L$(ROOT)/lib -lcla $(LA) \
+         -lgmpfrxx -lmpfr -lgmp -lqd -lfftw3_threads -larpack -lfftw3 -lm
+
+LIBS   = -L. -L/usr/local/lib -L$(ROOT)/lib -lcla $(LA) -lqd -lfftw3 -lgmpfrxx -lmpfr -lgmp -lm
+
+#LIBS  = -L. -L/opt/local/lib -L$(ROOT)/lib -lcla $(LA) -lqd -lfftw3 -lm
+#LIBS  = -L. -L/usr/local/lib -L$(ROOT)/lib -lcla $(LA) -lqd -lfftw3 -lm
+#LIBS  = -L. -L/opt/local/lib -L$(ROOT)/lib -lcla $(LA) -llbfgs -lf95 -lfftw3 -lgmpxx -lgmp -lm
+#LIBS  = -L. -L/opt/local/lib -L$(ROOT)/lib -lgmpfrxx -lmpfr -lgmpxx -lgmp -lm
+
+MPILIBS = -L$(ROOT)/lib -lscalapack -Wl,-flat_namespace -Wl,-commons,use_dylibs -I/usr/local/Cellar/open-mpi/2.1.1/lib -L/usr/local/opt/libevent/lib -L/usr/local/Cellar/open-mpi/2.1.1/lib -lmpi_usempif08 -lmpi_usempi_ignore_tkr -lmpi_mpifh -lmpi $(LIBS)
