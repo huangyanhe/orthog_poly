@@ -26,18 +26,20 @@ Real exp_(Real &x, Real cm)
 
 int main(int argc, char *argv[])
 {
-    if (argc < 4)
-        throw gen_err("\nusage:  ./test_jacobi n, aa, t");
+    if (argc < 3)
+        throw gen_err("\nusage:  ./test_jacobi n, aa");
     int n;
     Real aa;
     Real t;
     sscanf(argv[1], "%d", &n);
     str_to_real(argv[2], aa);
-    str_to_real(argv[3], t);
+    //str_to_real(argv[3], t);
     poly_grid<Real> *pg = new general_laguerre_grid<Real>(n,aa); // 0,1,...,n-1
+    // calculate hermite to check our method works correctly at the beginning
     poly_grid<Real> *pg1 = new general_hermite_grid<Real>(2*n,aa+0.5); // 0,1,2,...,2n-1
     Real cM = pg->cM;
     Real cm = pg->cm;
+    
     mp_mat<Real> J(n,n,0.0); 
     for (int i=0; i<n; i++){
       J(i,i) = pg->a[i];
@@ -102,10 +104,10 @@ int main(int argc, char *argv[])
       for  (int i=0; i<n; i++) {
 	if (i>0) {
 	  tb[2*i] = pg->b[i]/tb[2*i-1];
-	  cout << 2*i << " " << tb[2*i] << endl;
+	  // cout << 2*i << " " << tb[2*i] << endl;
 	}
 	tb[2*i+1] = pg->a[i]-tb[2*i];
-	cout << 2*i+1 << " " << tb[2*i+1] << endl;
+	// cout << 2*i+1 << " " << tb[2*i+1] << endl;
       }
       err = 0.0;
       for (int i=0; i<2*n; i++) {
@@ -113,12 +115,24 @@ int main(int argc, char *argv[])
       }
       printf("method 2 err = %32s\n", str(sqrt(err),0));
     }
+
+    // finding A_n/B_n where A's and B's are solutions with initial value 1,0 and 0,1
+    if (0) {
+      Real x = 0.01;
+      Real tmp1;
+      for(int j=40; j < 20000; j++) {
+	tmp1 = 0.0;
+	for(int i=j; i>1; i--) {
+	  tmp1 = -sqrt(tb[i-1]/tb[i])/(x/sqrt(tb[i])+tmp1);
+	}
+	cout << j << " " << str(tmp1,0) << endl;
+      }
+    }
     
     // evaluating tphi_2n(t) and compare with phi_n(t*t)
     valarray<Real> p(0.0,n);
     valarray<Real> tp(0.0,2*n-1);
-    Real temp = pow(t,aa)*exp(-t*t/2);
-    
+    Real temp = 0.0;
     if (0) {
       tp[0] = 1.0/pg->cc[0];
       tp[1] = t/(pg->cc[0]*sqrt(tb[1]));
@@ -147,20 +161,14 @@ int main(int argc, char *argv[])
     pg->compute_xw(0, Phi.p);
     
     // 2 xgrids 
-    valarray<Real> x1(0.0,n), x2(0.0,2*n);
+    valarray<Real> x2(0.0,2*n);
     valarray<Real> E1(0.0,n), E2(0.0,2*n);
     mp_mat<Real> QT(2*n,2*n, 0.0);
-    x1[0] = pg->a[0];
-    for (int i=1; i<n; i++) {
-      x1[i] = pg->a[i];
-      E1[i-1] = sqrt(pg->b[i]);
-    }
     for (int i=1; i<2*n; i++) {
       E2[i-1] = sqrt(tb[i]);
     }
     int info = 0;
     // eigenvalues in ascending orders are stored in X
-    // dstedc('N', n, &x1[0], &E1[0], QT.p, n, &info);
     dstedc('N', 2*n, &x2[0], &E2[0], QT.p, 2*n, &info);
 #if DDDD
     ofstream fp("xgrid_dd");
@@ -172,14 +180,12 @@ int main(int argc, char *argv[])
     ofstream fp("xgrid");
     for (int i=n; i<2*n; i++) {
       fp << str(pg->xgrid[i-n],0) << endl;
-      // fp << str(x1[i-n],0) << endl;
       fp << str(x2[i]*x2[i],0) << endl;
     }
 #endif
 
 
 // evaluate using Chebyshev polynomial
-    
     if (1) {
       Real x, t;
       int m = 20;
@@ -191,12 +197,15 @@ int main(int argc, char *argv[])
 	getline(in, line);
 	istringstream is(line);
 	is >> t >> x;
+	temp = pow(t,aa)*exp(-t*t/2);
         tp[0] = 1.0/pg->cc[0];
-	tp[1] = t/(pg->cc[0]*sqrt(tb[1]));
+	//tp[1] = t/(pg->cc[0]*sqrt(tb[1]));
+	tp[1] = t/(pg->cc[0]*sqrt(pg1->b[1]));
 	p[0] = 1.0/pg->cc[0];
 	p[1] = (x-pg->a[0])/pg->cc[1];
 	for (int i=1; i<2*n-2; i++) {
-	  tp[i+1] = (t*tp[i]-sqrt(tb[i])*tp[i-1])/sqrt(tb[i+1]);
+	  //tp[i+1] = (t*tp[i]-sqrt(tb[i])*tp[i-1])/sqrt(tb[i+1]);
+	  tp[i+1] = (t*tp[i]-sqrt(pg1->b[i])*tp[i-1])/sqrt(pg1->b[i+1]);
 	}
 	for (int i=1; i<n-1; i++) {
 	  p[i+1] = ((x-pg->a[i])*p[i]-sqrt(pg->b[i])*p[i-1])/sqrt(pg->b[i+1]);
@@ -212,14 +221,17 @@ int main(int argc, char *argv[])
       FILE *fp1 = fopen("chuan","w");
       for (int j=0; j<m; j++) {
 	t = z.xx[j+1]*x2[n];
+	temp = pow(t,aa)*exp(-t*t/2);
 	x = t*t;
 	fprintf(fp1, "%s %s\n", str(t,0), str(x,0));
 	tp[0] = 1.0/pg->cc[0];
-	tp[1] = t/(pg->cc[0]*sqrt(tb[1]));
+	//tp[1] = t/(pg->cc[0]*sqrt(tb[1]));
+	tp[1] = t/(pg->cc[0]*sqrt(pg1->b[1]));
 	p[0] = 1.0/pg->cc[0];
 	p[1] = (x-pg->a[0])/pg->cc[1];
 	for (int i=1; i<2*n-2; i++) {
-	  tp[i+1] = (t*tp[i]-sqrt(tb[i])*tp[i-1])/sqrt(tb[i+1]);
+	  //tp[i+1] = (t*tp[i]-sqrt(tb[i])*tp[i-1])/sqrt(tb[i+1]);
+	  tp[i+1] = (t*tp[i]-sqrt(pg1->b[i])*tp[i-1])/sqrt(pg1->b[i+1]);
 	}
 	for (int i=1; i<n-1; i++) {
 	  p[i+1] = ((x-pg->a[i])*p[i]-sqrt(pg->b[i])*p[i-1])/sqrt(pg->b[i+1]);
@@ -255,29 +267,17 @@ int main(int argc, char *argv[])
       tmp = 0.0;
       kp = 0;
       ksum = 0;
-      if (x1[j]<1.3*1.3) { // 1.3*1.3 is the threshold
-	t = x2[j+n];
-	tp[0] = 1.0/pg1->cc[0];
-	tp[1] = t*tp[0]/sqrt(tb[1]);
-	for (int i=1; i<2*n-2; i++) {
-	  tp[i+1] = (t*tp[i]-sqrt(tb[i])*tp[i-1])/sqrt(tb[i+1]);
-	}
-	for (int i=0; i<n; i++) {
-	  w[j] += tp[2*i]*tp[2*i];
-	}
-	w[j] = 1.0/(w[j]*exp(-t*t)*pow(t,2*aa) );
-      }
-      else {
-	w[j] += pp*pp;
-	t = x1[j];
+      cout << pg->xgrid[j] << endl;
+      w[j] += pp*pp;
+      t = x2[j+n];
+      p0 = pp;
+      pp = t*p0/sqrt(tb[1]);
+      for (int i=2; i<2*n-1; i++) {
+	Real p00 = p0;
 	p0 = pp;
-	pp = (t-pg->a[0])/pg->cc[1];
-	w[j] += pp*pp;
-	for (int i=2; i<n; i++) {
-	  Real p00 = p0;
-	  p0 = pp;
-	  int temp = 0;
-	  pp = ((t-pg->a[i-1])*p0 - sqrt(pg->b[i-1])*p00)/sqrt(pg->b[i]);
+	int temp = 0;
+	pp = (t*p0 - sqrt(tb[i-1])*p00)/sqrt(tb[i]);
+	if (i%2==0) {
 	  Real absw = abs(w[j]);
 	  if (absw > cM) { w[j] *= cm; ksum += 320; temp = 1;}
 	  if (absw < cm) { w[j] *= cM; ksum -= 320; temp = -1;}
@@ -291,27 +291,27 @@ int main(int argc, char *argv[])
 	  // }
 	  if (temp == 1) { mult_by_pow2(pp,-160); mult_by_pow2(p0,-160);}
 	  if (temp == -1) { mult_by_pow2(pp,160); mult_by_pow2(p0,160);}
-	  w[j] += pp*pp;
+	    w[j] += pp*pp;
 	}
-	// p[0] = 1.0/pg->cc[0];
-	// p[1] = (x1[j]-pg->a[0])/pg->cc[1];
-	// for (int i=1; i<n-1; i++) {
-	//   p[i+1] = ((t-pg->a[i])*p[i]-sqrt(pg->b[i])*p[i-1])/sqrt(pg->b[i+1]);
-	// }
-	// for (int i=0; i<n; i++) {
-	//   w[j] += p[i]*p[i];
-	// }
-	int k1 = 0;
-	tmp = -t;
-        more = exp_(tmp,cm);
-	// printf("w[j]0 = %23s\n", str(w[j],0) );
-	w[j] = 1.0/(w[j]*pow(t,aa)); // if n is pretty big, xgrid value t would be pretty big, wo w[j] might underflow. Need to use cm, cM again. But I didn't implement here.
-	for (int i=0; i<more; i++) {
-	  w[j] /= tmp;
-	  if (w[j]>cM) { w[j] *= cm; k1 += 320;}
-	}
-	mult_by_pow2(w[j],k1-ksum);
       }
+      // p[0] = 1.0/pg->cc[0];
+      // p[1] = (x1[j]-pg->a[0])/pg->cc[1];
+      // for (int i=1; i<n-1; i++) {
+      //   p[i+1] = ((t-pg->a[i])*p[i]-sqrt(pg->b[i])*p[i-1])/sqrt(pg->b[i+1]);
+      // }
+      // for (int i=0; i<n; i++) {
+      //   w[j] += p[i]*p[i];
+      // }
+      int k1 = 0;
+      tmp = -t*t;
+      more = exp_(tmp,cm);
+      // printf("w[j]0 = %23s\n", str(w[j],0) );
+      w[j] = 1.0/(w[j]*pow(t,2*aa)); // if n is pretty big, xgrid value t would be pretty big, wo w[j] might underflow. Need to use cm, cM again. But I didn't implement here.
+      for (int i=0; i<more; i++) {
+	w[j] /= tmp;
+	if (w[j]>cM) { w[j] *= cm; k1 += 320;}
+      }
+      mult_by_pow2(w[j],k1-ksum);
       fp1 << str(pg->wgrid[j],0) << endl;
       fp1 << str(sqrt(w[j]),0) << endl;
       // printf("%23s\n",str(w[j],0) );

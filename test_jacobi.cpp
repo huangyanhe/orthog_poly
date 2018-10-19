@@ -15,7 +15,7 @@
 
 int main(int argc, char *argv[])
 {
-    if (argc < 8)
+    if (argc < 5)
         throw gen_err("\nusage:  ./test_jacobi n, xb, aa, bb, t1, t2, t3 with -1<=t1<=1, t2=1+t1, t3=1-t1\n");
     int n; 
     Real xb = 0.0;
@@ -27,9 +27,9 @@ int main(int argc, char *argv[])
     str_to_real(argv[2], xb);
     str_to_real(argv[3], aa);
     str_to_real(argv[4], bb);
-    str_to_real(argv[5], t1);
-    str_to_real(argv[6], t2);
-    str_to_real(argv[7], t3);
+    // str_to_real(argv[5], t1);
+    //str_to_real(argv[6], t2);
+    //str_to_real(argv[7], t3);
     poly_grid<Real> *pg1 = new jacobi_grid<Real>(n,aa,bb,-xb,xb);
     poly_grid<Real> *pg2 = new jacobi_grid<Real>(n,aa,bb,0.0,xb); //0,1,...,n-1
     poly_grid<Real> *pg3 = new jacobi_grid<Real>(n,aa,bb,xb,0.0);
@@ -60,24 +60,85 @@ int main(int argc, char *argv[])
 	tb3[2*i] = (d0_3[i]-d1_3[i+1]-tb3[2*i+1]*d1_3[i])/(d1_3[i]+tb3[2*i-1]*d1_3[i-1]);
       }
     }
-
-    if (1) {
+    // use recurrence relation to find tb
+    if (0) {
       for (int i=0; i<n; i++) {
 	tb2[2*i+1] = pg2->a[i]-tb2[2*i];
-	tb3[2*i+1] = pg3->a[i]-tb3[2*i];
-	cout << 2*i+1 << " " << tb2[2*i+1] << endl;
+	//cout << i << " " << pg2->a[i] << endl;
+	printf("%d is %s\n", 2*i+1, str(tb2[2*i+1],0) );
+	//tb3[2*i+1] = pg3->a[i]-tb3[2*i];
+	// cout << 2*i+1 << " " << tb2[2*i+1] << endl;
 	if (i<n-1) {
 	  tb2[2*i+2] = pg2->b[i+1]/tb2[2*i+1];
-	  tb3[2*i+2] = pg3->b[i+1]/tb3[2*i+1];
-	  cout << 2*i+2 << " " << tb2[2*i+2] << endl;
+	  //cout << i << " " << pg2->b[i+1] << endl;
+	  printf("%d is %s\n", 2*i+2, str(tb2[2*i+2],0) );
+	  //tb3[2*i+2] = pg3->b[i+1]/tb3[2*i+1];
+	  // cout << 2*i+2 << " " << tb2[2*i+2] << endl;
 	}
       }
     }
+    // use formula of Gegenbauer polynomial directly
+    Real tmp;
+    if (1) {
+      tmp = 2*bb+1;
+      for (int i=0; i <n; i++) {
+	tb2[2*i+1] = (2*i+1+tmp)*(2*i+1+2*aa+tmp)/(4*(2*i+1+aa+bb)*(2*i+2+aa+bb));
+	if (i<n-1) {
+	  tb2[2*i+2] = (2*i+2)*(2*i+2+2*aa)/(4*(2*i+2+aa+bb)*(2*i+3+aa+bb));
+	}
+      }
+    }
+      
     Real err = 0.0;
+    Real x = -0.99;
+    // check if continued fraction converges to decide if the recurrence relation posesses a minimal solution. == finding continued fraction A_n/B_n where A's and B's are solutions with initial value 1,0 and 0,1
+    if (0) {
+      for(int j=1; j < 4000; j++) {
+	tmp = 0.0;
+	for(int i=j; i>1; i--) {
+	  tmp = sqrt(tb2[i-1]/tb2[i])/(-x/sqrt(tb2[i])-tmp);
+	}
+	cout << str(tmp,0) << endl;
+      }
+    }
 
+    if (0) {
+      for(int j=1; j < 2000; j++) {
+	tmp = 0.0;
+	for(int i=j; i>1; i--) {
+	  tmp = sqrt(pg1->b[i-1]/pg1->b[i])/((pg1->a[i-1]-x)/sqrt(pg1->b[i])-tmp);
+	}
+	cout << str(tmp,0) << endl;
+      }
+    }
+
+    // find eigenvalues of 2*n matrix with the first row storing 1,0 .., the second 0, 1, ...
+    if (0) {
+      tmp = 0.01;
+      int info = 0;
+      int N = 800;
+      mp_mat<Real> mat(2,N, 0.0);
+      valarray<Real> eigen(0.0, 2);
+      mat(0,0) = 1.0;
+      mat(1,0) = 0.0;
+      mat(0,1) = 0.0;
+      mat(1,1) = 1.0;
+      for(int i=2; i<N; i++) {
+	mat(0,i) = (tmp*mat(0,i-1)-sqrt(tb2[i-1])*mat(0,i-2))/sqrt(tb2[i]);
+	mat(1,i) = (tmp*mat(1,i-1)-sqrt(tb2[i-1])*mat(1,i-2))/sqrt(tb2[i]);
+	dgesvd('N', 'N', 2, i+1, mat.p, i+1, &eigen[0], NULL, 1, NULL, 1, &info);
+	// cout << str(eigen[0]/eigen[1], 0) << endl;
+	cout << i << " " <<  eigen[0] << " " << eigen[1] << endl;
+      }
+      //mat.dump("haha",17);
+      //dgesvd('N', 'N', 2, N, mat.p, N, &eigen[0], NULL, 1, NULL, 1, &info);
+      //cout << N << " " <<  eigen[0] << " " << eigen[1] << endl;
+    }
+
+	
     // 3 xgrids
-    valarray<Real> x1(0.0,n), x2(0.0,2*n), x3(0.0,2*n);
-    valarray<Real> E1(0.0,n), E2(0.0,2*n), E3(0.0,2*n);
+    valarray<Real> x1(0.0,n), x2(0.0,2*n); //x3(0.0,2*n);
+    valarray<Real> E1(0.0,n), E2(0.0,2*n); //E3(0.0,2*n);
     mp_mat<Real> QT(2*n,2*n, 0.0);
     x1[0] = pg1->a[0];
     for (int i=1; i<n; i++) {
@@ -86,7 +147,7 @@ int main(int argc, char *argv[])
     }
     for (int i=1; i<2*n; i++) {
       E2[i-1] = sqrt(tb2[i]);
-      E3[i-1] = sqrt(tb3[i]);
+      //E3[i-1] = sqrt(tb3[i]);
     }
     int info = 0;
     // struct timespec start, finish;
@@ -94,7 +155,7 @@ int main(int argc, char *argv[])
     // clock_gettime(CLOCK_MONOTONIC, &start);
     dstedc('N', n, &x1[0], &E1[0], QT.p, n, &info);
     dstedc('N', 2*n, &x2[0], &E2[0], QT.p, 2*n, &info);
-    dstedc('N', 2*n, &x3[0], &E3[0], QT.p, 2*n, &info);
+    //dstedc('N', 2*n, &x3[0], &E3[0], QT.p, 2*n, &info);
     // clock_gettime(CLOCK_MONOTONIC, &finish);
     // elapsed += (finish.tv_sec-start.tv_sec);
     // elapsed += (finish.tv_nsec-start.tv_nsec)/1.0e9;
@@ -106,7 +167,7 @@ int main(int argc, char *argv[])
     for (int i=n; i<2*n; i++) {
       fp << str(x1[i-n],0) << endl;
       fp << str(2*x2[i]*x2[i],0) << endl;
-      fp << str(-2*x3[3*n-1-i]*x3[3*n-1-i],0) << endl;
+      //fp << str(-2*x3[3*n-1-i]*x3[3*n-1-i],0) << endl;
     }
  
     valarray<Real> p1(0.0,n);
@@ -151,7 +212,6 @@ int main(int argc, char *argv[])
       temp = 1.0/pow(2,(aa+bb+1)/2);
 #if DDDD
       ofstream fp("eval_dd");
-      
 #else
       ofstream fp("eval");
 #endif
@@ -173,19 +233,21 @@ int main(int argc, char *argv[])
       Real x, t, temp;
       int m = 20;
       valarray<Real> val(0.0,n);  // stores the value at the left end to normalize
+      temp = 1.0/pow(2,(aa+bb+1)/2);
 #if DDDD
       ofstream fp("eval_dd");
       string line;
       ifstream in("xx17");
-      ifstream inn("val");
-      getline( inn, line);
-      istringstream chuan(line);
-      chuan >> temp;
-      for (int i=0; i<n; i++) {
-	getline( inn, line);
-	istringstream chuan(line);
-	chuan >> val[i];
-      }
+      // ifstream inn("val");
+      //getline( inn, line);
+      //istringstream chuan(line);
+      //chuan >> temp;
+      //for (int i=0; i<n; i++) {
+      //getline( inn, line);
+      //istringstream chuan(line);
+      //chuan >> val[i];
+      //}
+      FILE *fp2 = fopen("val","w");
       for (int i=0; i<m; i++) {
 	getline( in, line);
 	istringstream yan(line);
@@ -193,55 +255,66 @@ int main(int argc, char *argv[])
 	tp2[0] = 1.0/pg2->cc[0];
 	tp2[1] = t*tp2[0]/sqrt(tb2[1]);
 	p1[0] = 1.0/pg1->cc[0];
-	p1[1] = (x-1-pg1->a[0])/pg1->cc[1];
-	for (int j=1; j<2*n-2; j++) {
-	  tp2[j+1] = (t*tp2[j]-sqrt(tb2[j])*tp2[j-1])/sqrt(tb2[j+1]);
-	}
-	for (int j=1; j<n-1; j++) {
-	  p1[j+1] = ((x-1-pg1->a[j])*p1[j]-sqrt(pg1->b[j])*p1[j-1])/sqrt(pg1->b[j+1]);
-	}
-	getline( inn, line);
-	for (int k=0; k<n; k++) {
-	  fp << str(p1[k]/val[k],0) << endl;
-	  fp << str(temp*tp2[2*k]/val[k],0) << endl;
-	}
-      }
-#else
-      temp = 1.0/pow(2,(aa+bb+1)/2);
-      chebyshev<Real> z(m);
-      ofstream fp("eval");
-      FILE *fp1 = fopen("xx17","w");
-      FILE *fp2 = fopen("val","w");
-      fprintf(fp2, "%s\n", str(temp,0));
-      for(int j=0; j<m; j++) {
-	t = z.xx[j+1]*x2[n];
-	x = 2*t*t;
-	fprintf(fp1, "%s %s\n", str(t,0), str(x,0));
-	tp2[0] = 1.0/pg2->cc[0];
-	tp2[1] = t*tp2[0]/sqrt(tb2[1]);
-	p1[0] = 1.0/pg1->cc[0];
-	p1[1] = (x-1-pg1->a[0])/pg1->cc[1];
-	if (j==0) {
+	p1[1] = (2*x-1-pg1->a[0])/pg1->cc[1];
+	if (i==0) {
 	  val[0] = 1.0/pg1->cc[0];
 	  val[1] = (-1.0-pg1->a[0])/pg1->cc[1];
 	  fprintf(fp2, "%s\n%s\n", str(val[0],0), str(val[1],0));
 	}
+	for (int j=1; j<2*n-2; j++) {
+	  tp2[j+1] = (t*tp2[j]-sqrt(tb2[j])*tp2[j-1])/sqrt(tb2[j+1]);
+	}
+	for (int j=1; j<n-1; j++) {
+	  p1[j+1] = ((2*x-1-pg1->a[j])*p1[j]-sqrt(pg1->b[j])*p1[j-1])/sqrt(pg1->b[j+1]);
+	  if(i==0) {
+	    val[j+1] = ((-1.0-pg1->a[j])*val[j]-sqrt(pg1->b[j])*val[j-1])/sqrt(pg1->b[j+1]);
+	    fprintf(fp2, "%s\n", str(val[j+1],0));
+	  }
+	}
+      	//getline( inn, line);
+	for (int k=0; k<n; k++) {
+	  fp << str(p1[k],0) << endl;
+	  fp << str(temp*tp2[2*k],0) << endl;
+	}
+      }
+      fclose(fp2);
+#else
+      chebyshev<Real> z(m);
+      ofstream fp("eval");
+      FILE *fp1 = fopen("xx17","w");
+      //FILE *fp2 = fopen("val","w");
+      //fprintf(fp2, "%s\n", str(temp,0));
+      for(int j=0; j<m; j++) {
+	t = z.xx[j+1]*x2[n];
+	x = t*t;
+	fprintf(fp1, "%s %s\n", str(t,0), str(x,0));
+	
+	tp2[0] = 1.0/pg2->cc[0];
+	tp2[1] = t*tp2[0]/sqrt(tb2[1]);
+	p1[0] = 1.0/pg1->cc[0];
+	p1[1] = (2*x-1-pg1->a[0])/pg1->cc[1];
+	//if (j==0) {
+	//val[0] = 1.0/pg1->cc[0];
+	//val[1] = (-1.0-pg1->a[0])/pg1->cc[1];
+	//fprintf(fp2, "%s\n%s\n", str(val[0],0), str(val[1],0));
+	//}
 	for (int i=1; i<2*n-2; i++) {
 	  tp2[i+1] = (t*tp2[i]-sqrt(tb2[i])*tp2[i-1])/sqrt(tb2[i+1]);
 	}
 	for (int i=1; i<n-1; i++) {
-	  p1[i+1] = ((x-1-pg1->a[i])*p1[i]-sqrt(pg1->b[i])*p1[i-1])/sqrt(pg1->b[i+1]);
-	  if(j==0) {
-	    val[i+1] = ((-1.0-pg1->a[i])*val[i]-sqrt(pg1->b[i])*val[i-1])/sqrt(pg1->b[i+1]);
-	    fprintf(fp2, "%s\n", str(val[i+1],0));
-	  }
+	  p1[i+1] = ((2*x-1-pg1->a[i])*p1[i]-sqrt(pg1->b[i])*p1[i-1])/sqrt(pg1->b[i+1]);
+	  //if(j==0) {
+	  //val[i+1] = ((-1.0-pg1->a[i])*val[i]-sqrt(pg1->b[i])*val[i-1])/sqrt(pg1->b[i+1]);
+	  //fprintf(fp2, "%s\n", str(val[i+1],0));
+	  //}
 	}
 	for (int i=0; i<n; i++) {
-	  fp << str(p1[i]/val[i],0) << endl;
-	  fp << str(temp*tp2[2*i]/val[i],0) << endl;
+	  fp << str(p1[i],0) << endl;
+	  fp << str(temp*tp2[2*i],0) << endl;
 	}
+	fp << endl;
       }
-      fclose(fp2);
+      //fclose(fp2);
       fclose(fp1);
 #endif
     }
@@ -294,33 +367,6 @@ int main(int argc, char *argv[])
 	w[j] += tp2[2*i]*tp2[2*i];
       }
       w[j] = temp/w[j];
-      // else
-      // 	if (x1[j]>0.9) {
-      // 	  t = x3[2*n-j-1];
-      // 	  fpx << str(1-2*t*t,0) << endl;
-      // 	  tp3[0] = 1.0/pg3->cc[0];
-      // 	  tp3[1] = t*tp3[0]/sqrt(tb3[1]);
-      // 	  for (int i=1; i<2*n-2; i++) {
-      // 	    tp3[i+1] = (t*tp3[i]-sqrt(tb3[i])*tp3[i-1])/sqrt(tb3[i+1]);
-      // 	  }
-      // 	  for (int i=0; i<n; i++) {
-      // 	    w[j] += tp3[2*i]*tp3[2*i];
-      // 	  }
-      // 	  w[j] = temp/w[j];
-      // 	}
-      // 	else {
-      // 	  t = x1[j];
-      // 	  fpx << str(t,0) << endl;
-      // 	  p1[0] = 1.0/pg1->cc[0];
-      // 	  p1[1] = (x1[j]-pg1->a[0])/pg1->cc[1];
-      // 	  for (int i=1; i<n-1; i++) {
-      // 	    p1[i+1] = ((t-pg1->a[i])*p1[i]-sqrt(pg1->b[i])*p1[i-1])/sqrt(pg1->b[i+1]);
-      // 	  }
-      // 	  for (int i=0; i<n; i++) {
-      // 	    w[j] += p1[i]*p1[i];
-      // 	  }
-      // 	  w[j] = 1/w[j];
-      // 	}
       fpx << str(pg1->xgrid[j],0) << endl;
       fpw << str(sqrt(w[j]),0) << endl;
       fpw << str(pg1->wgrid[j],0) << endl;
@@ -328,7 +374,7 @@ int main(int argc, char *argv[])
     }
     
     // part 1 method 1 using linear terms to find tb
-    if (0) {
+    if (1) {
       for (int i=0; i<n; i++){
 	J(i,i) = pg2->a[i];
 	if (i > 0){
