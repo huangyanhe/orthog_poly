@@ -161,12 +161,9 @@ int main(int argc, char *argv[])
   }
 
   fclose(file);
-    cout << "I'm here111 " << endl;
   poly_grid<Real> *pg = new plasma_grid<Real>(n,"abc",nu_int); // 0,1,...,n-1
   poly_grid<Real> *pg_bigger = new plasma_grid<Real>(n+1,"abc",nu_int);
   poly_grid<Real> *pg1 = new associate_plasma_grid<Real>(2*n,"abc_associate", nu_int);
-
-  cout << "I'm here " << endl;
 
   
   valarray<Real> p(0.0,n+1);
@@ -175,7 +172,7 @@ int main(int argc, char *argv[])
   ofstream fp3("tb");
   Real tmp1;
   cout << "tb generated for double precision usage" << endl;
-  if (0) {
+  if (1) {
     for  (int i=0; i<n; i++) {
       if (i>0) {
 	tb[2*i] = pg->b[i]/tb[2*i-1];
@@ -185,14 +182,14 @@ int main(int argc, char *argv[])
       fp3 << str(tb[2*i+1],0) << endl;
     }
   }
-  if (1) {
+  if (0) {
     for (int i=1; i<2*n; i++) {
         tb[i] = pg1->b[i];
 	fp3 << str(tb[i], 0) << endl;
       }
     }
 #else
-    if (0) {
+    if (1) {
       string line;
       ifstream in("tb");
       for (int i=1; i<2*n; i++) {
@@ -212,7 +209,7 @@ int main(int argc, char *argv[])
       }
     }
     // use tb calculated directly
-    if (1) {
+    if (0) {
       for (int i=1; i<2*n; i++) {
 	tb[i] = pg1->b[i];
       }
@@ -437,7 +434,4 @@ int main(int argc, char *argv[])
       // printf("%23s\n",str(w[j],0) );
     }
 #endif
-
-
-    
 }
